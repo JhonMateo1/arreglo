@@ -1,0 +1,226 @@
+diff --git a/app/controllers/DashboardController.php b/app/controllers/DashboardController.php
+index 96c369178355cc946612920238765ddde11c9baa..424fc739d6b0ec8ead89cb7cdfbbdd8ef39a0291 100644
+--- a/app/controllers/DashboardController.php
++++ b/app/controllers/DashboardController.php
+@@ -184,50 +184,58 @@ class DashboardController
+             unset($_SESSION['employee_error_message']);
+         } else {
+             $_SESSION['employee_temp_password_message'] = $baseMessage;
+         }
+ 
+         redirect(route('dashboard', 'addEmployee'));
+     }
+ 
+     public function logout()
+     {
+         session_destroy();
+         redirect(route('auth', 'login'));
+     }
+ 
+     public function audit()
+     {
+         authRequired();
+         $this->enforcePasswordUpdated();
+ 
+         $auditModel = new AuditModel();
+         $logs = json_decode(file_get_contents(DATA_PATH . '/audit.json'), true);
+ 
+         require VIEW_PATH . '/audit.php';
+     }
+ 
++    public function page_ventas()
++    {
++        authRequired();
++        $this->enforcePasswordUpdated();
++
++        require VIEW_PATH . '/page_ventas.php';
++    }
++
+     public function viewEmployee()
+     {
+         authRequired();
+         $this->enforcePasswordUpdated();
+ 
+         $id = trim($_GET['id'] ?? '');
+         
+         if (empty($id)) {
+             redirect(route('dashboard', 'index'));
+         }
+ 
+         $usersFile = DATA_PATH . '/users.json';
+         if (!file_exists($usersFile)) {
+             redirect(route('dashboard', 'index'));
+         }
+ 
+         $allUsers = json_decode(file_get_contents($usersFile), true) ?? [];
+         $user = null;
+ 
+         foreach ($allUsers as $u) {
+             if (!empty($u['id']) && trim($u['id']) === $id) {
+                 $user = $u;
+                 break;
+             }
+         }
+diff --git a/app/views/audit.php b/app/views/audit.php
+index 569f653a2675336a8781eac1d5ac3191aaf67535..4fa23e589ab85ed5723cf72acf901a4e2ec9a406 100644
+--- a/app/views/audit.php
++++ b/app/views/audit.php
+@@ -1,45 +1,46 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Auditoría del Sistema</title>
+     <link rel="stylesheet" href="<?= asset('estilos.css') ?>">
+     <link rel="stylesheet" href="<?= asset('dashboard.css') ?>">
+     <script src="<?= asset('theme.js') ?>" defer></script>
+ </head>
+ <body class="dashboard-body">
+ <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
+ <div class="dashboard-layout">
+     <aside class="dashboard-sidebar">
+         <h3>Dashboard</h3>
+         <p>Panel de Administración</p>
+ 
+         <span class="sidebar-section">PANEL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'index') ?>">Inicio</a>
+         <a class="sidebar-link active" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
+ 
+         <span class="sidebar-section">GENERAL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
+     </aside>
+ 
+     <main class="dashboard-main">
+         <section class="panel panel--wide hr-panel hr-panel--fullscreen">
+             <h1>Auditoría del sistema</h1>
+             <p class="subtitle">Registro de eventos y actividad reciente.</p>
+ 
+             <div class="table-wrap table-wrap--dashboard">
+                 <table class="audit-table dashboard-table">
+                     <thead>
+                     <tr>
+                         <th>Evento</th>
+                         <th>Email</th>
+                         <th>IP</th>
+                         <th>Fecha</th>
+                         <th>Detalles</th>
+                     </tr>
+                     </thead>
+                     <tbody>
+                     <?php foreach ($logs as $log): ?>
+                         <tr>
+diff --git a/app/views/dashboard.php b/app/views/dashboard.php
+index d267ce76400164f2426f08846607f02f0d10e554..1ce6742c9efa5f85ee2ac27167f80c3995791591 100644
+--- a/app/views/dashboard.php
++++ b/app/views/dashboard.php
+@@ -1,49 +1,50 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Dashboard RRHH</title>
+     <link rel="stylesheet" href="<?= asset('estilos.css') ?>">
+     <link rel="stylesheet" href="<?= asset('dashboard.css') ?>">
+     <script src="<?= asset('theme.js') ?>" defer></script>
+ </head>
+ <body class="dashboard-body">
+ <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
+ <?php
+ $view = $_GET['view'] ?? 'table';
+ $activeView = in_array($view, ['table', 'gallery'], true) ? $view : 'table';
+ ?>
+ <div class="dashboard-layout">
+     <aside class="dashboard-sidebar">
+         <h3>Dashboard</h3>
+         <p>Panel de Administración</p>
+ 
+         <span class="sidebar-section">PANEL</span>
+         <a class="sidebar-link active" href="<?= route('dashboard', 'index') ?>">Inicio</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
+ 
+         <span class="sidebar-section">GENERAL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
+     </aside>
+ 
+     <main class="dashboard-main">
+         <section class="panel panel--wide hr-panel hr-panel--fullscreen">
+             <h1>Formulario Tabla Detallada</h1>
+ 
+             <div class="module-headline">
+                 <h2>Gestión Interna (RRHH & Ops)</h2>
+                 <p>Recursos humanos, soporte al cliente y comunidad</p>
+             </div>
+ 
+             <nav class="tab-row">
+                 <a class="tab-item active" href="<?= route('dashboard', 'index') ?>">Recursos Humanos</a>
+                 <a class="tab-item" href="#">Soporte</a>
+                 <a class="tab-item" href="#">Comunidad</a>
+             </nav>
+ 
+             <div class="subtab-row">
+                 <a class="subtab-item active" href="<?= route('dashboard', 'index') ?>">Personal</a>
+                 <a class="subtab-item" href="<?= route('dashboard', 'index') ?>">Desempeño</a>
+                 <a class="subtab-item" href="<?= route('dashboard', 'index') ?>">Objetivos</a>
+diff --git a/app/views/employee_detail.php b/app/views/employee_detail.php
+index 9eec4094e692d2fee19b01afd7d418571478fc61..92252c4d2ec26342163ef936e11356653cecb2a1 100644
+--- a/app/views/employee_detail.php
++++ b/app/views/employee_detail.php
+@@ -134,51 +134,51 @@
+                 height: 80px;
+                 font-size: 2rem;
+             }
+ 
+             .employee-header-info h2 {
+                 font-size: 1.5rem;
+             }
+ 
+             .detail-grid {
+                 gap: 1rem;
+                 grid-template-columns: 1fr;
+             }
+         }
+     </style>
+ </head>
+ <body class="dashboard-body">
+ <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
+ 
+ <div class="dashboard-layout">
+     <aside class="dashboard-sidebar">
+         <h3>Dashboard</h3>
+         <p>Panel de Administración</p>
+ 
+         <span class="sidebar-section">PANEL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'index') ?>">Inicio</a>
+-        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">ventas</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
+         <span class="sidebar-section">GENERAL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
+     </aside>
+ 
+     <main class="dashboard-main">
+         <section class="panel panel--wide hr-panel hr-panel--fullscreen">
+             <?php if (isset($user) && $user): ?>
+                 <h1>Información del Empleado</h1>
+ 
+                 <div class="employee-detail-card">
+                     <!-- Encabezado con avatar y nombre -->
+                     <div class="employee-header">
+                         <div class="employee-avatar"><?= strtoupper(substr($user['name'] ?? 'U', 0, 1)) ?></div>
+                         <div class="employee-header-info">
+                             <h2><?= htmlspecialchars($user['name'] ?? 'N/A') ?></h2>
+                             <p><?= htmlspecialchars($user['type'] ?? 'N/A') ?></p>
+                         </div>
+                     </div>
+ 
+                     <!-- Información de Contacto -->
+                     <h3 style="font-size: 1.1rem; color: var(--text-secondary, #666); font-weight: 700; margin-top: 2rem; margin-bottom: 1rem;">Información de Contacto</h3>
+                     <div class="detail-grid">
+                         <div class="detail-item">
