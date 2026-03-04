@@ -1,0 +1,573 @@
+diff --git a/app/controllers/DashboardController.php b/app/controllers/DashboardController.php
+index 96c369178355cc946612920238765ddde11c9baa..2fd151976fefee9609857510a8c25a496c9bb21c 100644
+--- a/app/controllers/DashboardController.php
++++ b/app/controllers/DashboardController.php
+@@ -184,50 +184,63 @@ class DashboardController
+             unset($_SESSION['employee_error_message']);
+         } else {
+             $_SESSION['employee_temp_password_message'] = $baseMessage;
+         }
+ 
+         redirect(route('dashboard', 'addEmployee'));
+     }
+ 
+     public function logout()
+     {
+         session_destroy();
+         redirect(route('auth', 'login'));
+     }
+ 
+     public function audit()
+     {
+         authRequired();
+         $this->enforcePasswordUpdated();
+ 
+         $auditModel = new AuditModel();
+         $logs = json_decode(file_get_contents(DATA_PATH . '/audit.json'), true);
+ 
+         require VIEW_PATH . '/audit.php';
+     }
+ 
++    public function page_ventas()
++    {
++        authRequired();
++        $this->enforcePasswordUpdated();
++
++        $ventasFile = DATA_PATH . '/ventas.json';
++        $ventas = file_exists($ventasFile)
++            ? json_decode(file_get_contents($ventasFile), true) ?? []
++            : [];
++
++        require VIEW_PATH . '/page_ventas.php';
++    }
++
+     public function viewEmployee()
+     {
+         authRequired();
+         $this->enforcePasswordUpdated();
+ 
+         $id = trim($_GET['id'] ?? '');
+         
+         if (empty($id)) {
+             redirect(route('dashboard', 'index'));
+         }
+ 
+         $usersFile = DATA_PATH . '/users.json';
+         if (!file_exists($usersFile)) {
+             redirect(route('dashboard', 'index'));
+         }
+ 
+         $allUsers = json_decode(file_get_contents($usersFile), true) ?? [];
+         $user = null;
+ 
+         foreach ($allUsers as $u) {
+             if (!empty($u['id']) && trim($u['id']) === $id) {
+                 $user = $u;
+                 break;
+             }
+         }
+diff --git a/app/views/audit.php b/app/views/audit.php
+index 569f653a2675336a8781eac1d5ac3191aaf67535..48e3927a784041db9e3568e541ad57984b8174c9 100644
+--- a/app/views/audit.php
++++ b/app/views/audit.php
+@@ -1,44 +1,45 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Auditoría del Sistema</title>
+     <link rel="stylesheet" href="<?= asset('estilos.css') ?>">
+     <link rel="stylesheet" href="<?= asset('dashboard.css') ?>">
+     <script src="<?= asset('theme.js') ?>" defer></script>
+ </head>
+ <body class="dashboard-body">
+ <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
+ <div class="dashboard-layout">
+     <aside class="dashboard-sidebar">
+         <h3>Dashboard</h3>
+         <p>Panel de Administración</p>
+ 
+         <span class="sidebar-section">PANEL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'index') ?>">Inicio</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
+         <a class="sidebar-link active" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
+ 
+         <span class="sidebar-section">GENERAL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
+     </aside>
+ 
+     <main class="dashboard-main">
+         <section class="panel panel--wide hr-panel hr-panel--fullscreen">
+             <h1>Auditoría del sistema</h1>
+             <p class="subtitle">Registro de eventos y actividad reciente.</p>
+ 
+             <div class="table-wrap table-wrap--dashboard">
+                 <table class="audit-table dashboard-table">
+                     <thead>
+                     <tr>
+                         <th>Evento</th>
+                         <th>Email</th>
+                         <th>IP</th>
+                         <th>Fecha</th>
+                         <th>Detalles</th>
+                     </tr>
+                     </thead>
+                     <tbody>
+                     <?php foreach ($logs as $log): ?>
+diff --git a/app/views/dashboard.php b/app/views/dashboard.php
+index d267ce76400164f2426f08846607f02f0d10e554..5e15b58eb63b2e1ce1ed61b26d37628e6d638fed 100644
+--- a/app/views/dashboard.php
++++ b/app/views/dashboard.php
+@@ -1,48 +1,49 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Dashboard RRHH</title>
+     <link rel="stylesheet" href="<?= asset('estilos.css') ?>">
+     <link rel="stylesheet" href="<?= asset('dashboard.css') ?>">
+     <script src="<?= asset('theme.js') ?>" defer></script>
+ </head>
+ <body class="dashboard-body">
+ <button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
+ <?php
+ $view = $_GET['view'] ?? 'table';
+ $activeView = in_array($view, ['table', 'gallery'], true) ? $view : 'table';
+ ?>
+ <div class="dashboard-layout">
+     <aside class="dashboard-sidebar">
+         <h3>Dashboard</h3>
+         <p>Panel de Administración</p>
+ 
+         <span class="sidebar-section">PANEL</span>
+         <a class="sidebar-link active" href="<?= route('dashboard', 'index') ?>">Inicio</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
+ 
+         <span class="sidebar-section">GENERAL</span>
+         <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
+         <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
+     </aside>
+ 
+     <main class="dashboard-main">
+         <section class="panel panel--wide hr-panel hr-panel--fullscreen">
+             <h1>Formulario Tabla Detallada</h1>
+ 
+             <div class="module-headline">
+                 <h2>Gestión Interna (RRHH & Ops)</h2>
+                 <p>Recursos humanos, soporte al cliente y comunidad</p>
+             </div>
+ 
+             <nav class="tab-row">
+                 <a class="tab-item active" href="<?= route('dashboard', 'index') ?>">Recursos Humanos</a>
+                 <a class="tab-item" href="#">Soporte</a>
+                 <a class="tab-item" href="#">Comunidad</a>
+             </nav>
+ 
+             <div class="subtab-row">
+                 <a class="subtab-item active" href="<?= route('dashboard', 'index') ?>">Personal</a>
+                 <a class="subtab-item" href="<?= route('dashboard', 'index') ?>">Desempeño</a>
+diff --git a/app/views/page_ventas.php b/app/views/page_ventas.php
+index 26e819fe0c78c1beeeeb786e64238cd8c07cb382..c3087e018ce30b1266384368f79eef93c76841f6 100644
+--- a/app/views/page_ventas.php
++++ b/app/views/page_ventas.php
+@@ -1,190 +1,200 @@
+ <!DOCTYPE html>
+ <html lang="es">
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+     <title>Módulo de Ventas</title>
++    <link rel="stylesheet" href="<?= asset('estilos.css') ?>">
++    <link rel="stylesheet" href="<?= asset('dashboard.css') ?>">
++    <script src="<?= asset('theme.js') ?>" defer></script>
+     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+-    <style>
+-        *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
+-        body{background:linear-gradient(135deg,#0a192f,#0f2747);color:#fff}
+-        header{background:#081424;padding:20px 40px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+-        h1{font-size:24px}
+-        .btn{background:#1e3a8a;border:none;padding:8px 14px;border-radius:8px;color:#fff;cursor:pointer;transition:.3s}
+-        .btn:hover{background:#2563eb}
+-        .btn-danger{background:#7f1d1d}
+-        .btn-danger:hover{background:#b91c1c}
+-        .container{padding:40px}
+-        .grid{display:grid;grid-template-columns:2fr 1fr;gap:30px}
+-        .card{background:#112240;padding:20px;border-radius:16px;box-shadow:0 8px 25px rgba(0,0,0,.4)}
+-        table{width:100%;border-collapse:collapse;margin-top:15px}
+-        th,td{padding:12px;text-align:left}
+-        th{background:#0f1f36;color:#94a3b8}
+-        tr:nth-child(even){background:#0d1b2a}
+-        tr:hover{background:#1e3a8a}
+-        input{padding:8px;border-radius:6px;border:none;background:#1e293b;color:#fff;margin-right:5px}
+-        .form-inline{margin-top:10px}
+-        .analytics-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:15px;margin-bottom:20px}
+-        .analytics-cards div{background:#0f1f36;padding:15px;border-radius:12px;text-align:center}
+-        .modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);justify-content:center;align-items:center}
+-        .modal-content{background:#112240;padding:25px;border-radius:12px;width:350px}
+-        .modal-content h3{margin-bottom:10px}
+-    </style>
+ </head>
+-<body>
+-
+-<header>
+-    <h1>Módulo de Ventas</h1>
+-    <button class="btn" onclick="openModal()">+ Nueva Venta (Modal)</button>
+-</header>
+-
+-<div class="container">
+-<div class="grid">
+-
+-    <!-- SECCIÓN CRUD -->
+-    <div class="card">
+-        <h2>Gestión de Ventas</h2>
+-
+-        <!-- OPCIÓN 1: CRUD Inline -->
+-        <div class="form-inline">
+-            <input type="text" id="cliente" placeholder="Cliente">
+-            <input type="text" id="producto" placeholder="Producto">
+-            <input type="number" id="total" placeholder="Total">
+-            <button class="btn" onclick="agregarVenta()">Agregar (Inline)</button>
+-        </div>
+-
+-        <table id="tablaVentas">
+-            <thead>
+-                <tr>
+-                    <th>ID</th>
+-                    <th>Cliente</th>
+-                    <th>Producto</th>
+-                    <th>Total</th>
+-                    <th>Acciones</th>
+-                </tr>
+-            </thead>
+-            <tbody></tbody>
+-        </table>
+-    </div>
+-
+-    <!-- SECCIÓN ANALÍTICA -->
+-    <div class="card">
+-        <h2>Panel Analítico</h2>
+-        <div class="analytics-cards">
+-            <div>
+-                <h4>Total Ventas</h4>
+-                <p id="totalVentas">$0</p>
+-            </div>
+-            <div>
+-                <h4>N° Ventas</h4>
+-                <p id="cantidadVentas">0</p>
++<body class="dashboard-body">
++<button class="theme-toggle" type="button" data-theme-toggle aria-label="Cambiar tema"></button>
++
++<div class="dashboard-layout">
++    <aside class="dashboard-sidebar">
++        <h3>Dashboard</h3>
++        <p>Panel de Administración</p>
++
++        <span class="sidebar-section">PANEL</span>
++        <a class="sidebar-link" href="<?= route('dashboard', 'index') ?>">Inicio</a>
++        <a class="sidebar-link active" href="<?= route('dashboard', 'page_ventas') ?>">Ventas</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'audit') ?>">Auditoría</a>
++
++        <span class="sidebar-section">GENERAL</span>
++        <a class="sidebar-link" href="<?= route('dashboard', 'addEmployee') ?>">Agregar empleado</a>
++        <a class="sidebar-link" href="<?= route('dashboard', 'logout') ?>">Cerrar sesión</a>
++    </aside>
++
++    <main class="dashboard-main">
++        <section class="panel panel--wide hr-panel hr-panel--fullscreen ventas-panel">
++            <div class="module-header">
++                <div>
++                    <h1>Módulo de Ventas</h1>
++                    <p class="subtitle">Gestión de ventas, resumen y distribución por producto.</p>
++                </div>
++                <button class="btn-primary btn-inline" type="button" onclick="openModal()">+ Nueva venta</button>
+             </div>
+-        </div>
+-        <canvas id="graficoVentas"></canvas>
+-    </div>
+ 
+-</div>
++            <div class="ventas-grid">
++                <article class="ventas-card">
++                    <h2>Gestión de Ventas</h2>
++                    <div class="ventas-form-inline">
++                        <input type="text" id="cliente" placeholder="Cliente">
++                        <input type="text" id="producto" placeholder="Producto">
++                        <input type="number" id="total" placeholder="Total">
++                        <button class="btn-secondary" type="button" onclick="agregarVenta()">Agregar</button>
++                    </div>
++
++                    <div class="table-wrap table-wrap--dashboard">
++                        <table class="audit-table dashboard-table" id="tablaVentas">
++                            <thead>
++                            <tr>
++                                <th>ID</th>
++                                <th>Cliente</th>
++                                <th>Producto</th>
++                                <th>Total</th>
++                                <th>Acciones</th>
++                            </tr>
++                            </thead>
++                            <tbody></tbody>
++                        </table>
++                    </div>
++                </article>
++
++                <article class="ventas-card">
++                    <h2>Panel Analítico</h2>
++                    <div class="stats-grid ventas-stats-grid">
++                        <div class="stat-card">
++                            <h4>Total Ventas</h4>
++                            <p class="stat-value" id="totalVentas">$0</p>
++                        </div>
++                        <div class="stat-card">
++                            <h4>N° Ventas</h4>
++                            <p class="stat-value" id="cantidadVentas">0</p>
++                        </div>
++                    </div>
++                    <canvas id="graficoVentas"></canvas>
++                </article>
++            </div>
++        </section>
++    </main>
+ </div>
+ 
+-<!-- OPCIÓN 2: CRUD con Modal -->
+ <div class="modal" id="modalVenta">
+-    <div class="modal-content">
++    <div class="modal-content ventas-modal-content">
+         <h3>Nueva Venta</h3>
+         <input type="text" id="mCliente" placeholder="Cliente"><br><br>
+         <input type="text" id="mProducto" placeholder="Producto"><br><br>
+         <input type="number" id="mTotal" placeholder="Total"><br><br>
+-        <button class="btn" onclick="guardarDesdeModal()">Guardar</button>
+-        <button class="btn btn-danger" onclick="closeModal()">Cancelar</button>
++        <button class="btn-primary btn-inline" type="button" onclick="guardarDesdeModal()">Guardar</button>
++        <button class="btn-secondary btn-inline" type="button" onclick="closeModal()">Cancelar</button>
+     </div>
+ </div>
+ 
+ <script>
+-let ventas = [];
+-let contador = 1;
++let ventas = <?= json_encode($ventas ?? [], JSON_UNESCAPED_UNICODE) ?>;
++let contador = ventas.reduce((maxId, venta) => Math.max(maxId, Number(venta.id || 0)), 0) + 1;
+ 
+ function agregarVenta(clienteParam, productoParam, totalParam){
+     let cliente = clienteParam || document.getElementById('cliente').value;
+     let producto = productoParam || document.getElementById('producto').value;
+     let total = parseFloat(totalParam || document.getElementById('total').value);
+ 
+     if(!cliente || !producto || !total) return;
+ 
+-    ventas.push({id:contador++, cliente, producto, total});
++    ventas.push({id: contador++, cliente, producto, total});
+     renderTabla();
+     actualizarAnalitica();
+ 
+     document.getElementById('cliente').value='';
+     document.getElementById('producto').value='';
+     document.getElementById('total').value='';
+ }
+ 
+ function renderTabla(){
+     const tbody = document.querySelector('#tablaVentas tbody');
+     tbody.innerHTML='';
+     ventas.forEach(v=>{
+         tbody.innerHTML += `
+         <tr>
+             <td>${v.id}</td>
+             <td>${v.cliente}</td>
+             <td>${v.producto}</td>
+             <td>$${v.total}</td>
+             <td>
+-                <button class="btn" onclick="editarVenta(${v.id})">Editar</button>
+-                <button class="btn btn-danger" onclick="eliminarVenta(${v.id})">Eliminar</button>
++                <button class="btn-secondary" type="button" onclick="editarVenta(${v.id})">Editar</button>
++                <button class="btn-secondary" type="button" onclick="eliminarVenta(${v.id})">Eliminar</button>
+             </td>
+         </tr>`;
+     });
+ }
+ 
+ function eliminarVenta(id){
+-    ventas = ventas.filter(v=>v.id!==id);
++    ventas = ventas.filter(v => Number(v.id) !== Number(id));
+     renderTabla();
+     actualizarAnalitica();
+ }
+ 
+ function editarVenta(id){
+-    const venta = ventas.find(v=>v.id===id);
++    const venta = ventas.find(v => Number(v.id) === Number(id));
++    if (!venta) return;
++
+     const nuevoCliente = prompt('Cliente:', venta.cliente);
+     const nuevoProducto = prompt('Producto:', venta.producto);
+     const nuevoTotal = prompt('Total:', venta.total);
+     if(nuevoCliente && nuevoProducto && nuevoTotal){
+         venta.cliente = nuevoCliente;
+         venta.producto = nuevoProducto;
+         venta.total = parseFloat(nuevoTotal);
+         renderTabla();
+         actualizarAnalitica();
+     }
+ }
+ 
+ function actualizarAnalitica(){
+-    const total = ventas.reduce((acc,v)=>acc+v.total,0);
+-    document.getElementById('totalVentas').innerText='$'+total;
+-    document.getElementById('cantidadVentas').innerText=ventas.length;
++    const total = ventas.reduce((acc,v)=> acc + Number(v.total || 0), 0);
++    document.getElementById('totalVentas').innerText = '$' + total.toFixed(2);
++    document.getElementById('cantidadVentas').innerText = ventas.length;
+ 
+     grafico.data.labels = ventas.map(v=>v.producto);
+     grafico.data.datasets[0].data = ventas.map(v=>v.total);
+     grafico.update();
+ }
+ 
+ function openModal(){document.getElementById('modalVenta').style.display='flex';}
+ function closeModal(){document.getElementById('modalVenta').style.display='none';}
++
+ function guardarDesdeModal(){
+     agregarVenta(
+         document.getElementById('mCliente').value,
+         document.getElementById('mProducto').value,
+         document.getElementById('mTotal').value
+     );
++
++    document.getElementById('mCliente').value = '';
++    document.getElementById('mProducto').value = '';
++    document.getElementById('mTotal').value = '';
+     closeModal();
+ }
+ 
+ const ctx = document.getElementById('graficoVentas');
+-const grafico = new Chart(ctx,{
++const grafico = new Chart(ctx, {
+     type:'bar',
+-    data:{labels:[],datasets:[{label:'Ventas por Producto',data:[]}]},
+-    options:{responsive:true,plugins:{legend:{labels:{color:'white'}}},scales:{x:{ticks:{color:'white'}},y:{ticks:{color:'white'}}}}
++    data:{labels:[],datasets:[{label:'Ventas por Producto',data:[], backgroundColor:'#5ca0ff'}]},
++    options:{
++        responsive:true,
++        plugins:{legend:{labels:{color:'#d3e0ff'}}},
++        scales:{
++            x:{ticks:{color:'#d3e0ff'}, grid:{color:'rgba(121,147,214,0.2)'}},
++            y:{ticks:{color:'#d3e0ff'}, grid:{color:'rgba(121,147,214,0.2)'}}
++        }
++    }
+ });
+-</script>
+ 
++renderTabla();
++actualizarAnalitica();
++</script>
+ </body>
+ </html>
+diff --git a/data/ventas.json b/data/ventas.json
+new file mode 100644
+index 0000000000000000000000000000000000000000..199edb4e63038093a2ce0356387b674f5379d8f3
+--- /dev/null
++++ b/data/ventas.json
+@@ -0,0 +1,14 @@
++[
++  {
++    "id": 1,
++    "cliente": "Cliente Demo",
++    "producto": "Suscripción",
++    "total": 1200
++  },
++  {
++    "id": 2,
++    "cliente": "Empresa ABC",
++    "producto": "Implementación",
++    "total": 3400
++  }
++]
+diff --git a/public/dashboard.css b/public/dashboard.css
+index f0cf84eadd6033fab1e59643c48c29ff11b0540d..1aaf13342822b890b0d092e49db2698efe7a8394 100644
+--- a/public/dashboard.css
++++ b/public/dashboard.css
+@@ -476,25 +476,76 @@ body[data-theme='light'] .subtab-item,
+ body[data-theme='light'] .stat-card h4,
+ body[data-theme='light'] .stat-card small,
+ body[data-theme='light'] .profile-card p,
+ body[data-theme='light'] .profile-card small {
+     color: #4a6288;
+ }
+ 
+ body[data-theme='light'] .sidebar-link.active,
+ body[data-theme='light'] .sidebar-link:hover,
+ body[data-theme='light'] .tab-item.active,
+ body[data-theme='light'] .subtab-item.active {
+     color: #214e96;
+ }
+ 
+ body[data-theme='light'] .employee-modal {
+     background: rgba(255, 255, 255, 0.98);
+     border-color: #d5deec;
+     color: #39424e;
+ }
+ 
+ body[data-theme='light'] .employee-actions .btn-secondary {
+     background: #edf4ff;
+     border-color: #b9ccea;
+     color: #2e5c8f;
+ }
++
++.ventas-panel .module-header {
++    margin-bottom: 18px;
++}
++
++.ventas-grid {
++    display: grid;
++    grid-template-columns: 2fr 1fr;
++    gap: 18px;
++}
++
++.ventas-card {
++    background: rgba(19, 33, 60, 0.65);
++    border: 1px solid rgba(125, 151, 223, 0.26);
++    border-radius: 14px;
++    padding: 16px;
++}
++
++.ventas-form-inline {
++    display: grid;
++    grid-template-columns: repeat(4, minmax(0, 1fr));
++    gap: 10px;
++    margin-top: 12px;
++}
++
++.ventas-form-inline input {
++    min-width: 0;
++}
++
++.ventas-stats-grid {
++    grid-template-columns: repeat(2, minmax(0, 1fr));
++    margin-bottom: 12px;
++}
++
++.ventas-modal-content {
++    width: min(92vw, 360px);
++}
++
++.ventas-modal-content h3 {
++    margin-bottom: 12px;
++}
++
++@media (max-width: 980px) {
++    .ventas-grid {
++        grid-template-columns: 1fr;
++    }
++
++    .ventas-form-inline {
++        grid-template-columns: 1fr;
++    }
++}
